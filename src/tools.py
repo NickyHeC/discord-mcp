@@ -1,20 +1,40 @@
 # tools.py - Discord tools using Discord API v9
 import asyncio
+import sys
+from pathlib import Path
 from typing import List, Optional
 from dedalus_mcp import tool
 from pydantic import BaseModel
 
-from .discord_api import (
-    send_message_v9,
-    get_channel_messages_v9,
-    get_guild_v9,
-    get_guild_channels_v9,
-    get_current_user_guilds_v9,
-    delete_message_v9,
-    create_reaction_v9,
-    get_user_v9,
-    get_guild_members_v9,
-)
+# Handle imports for both package and direct execution
+try:
+    from .discord_api import (
+        send_message_v9,
+        get_channel_messages_v9,
+        get_guild_v9,
+        get_guild_channels_v9,
+        get_current_user_guilds_v9,
+        delete_message_v9,
+        create_reaction_v9,
+        get_user_v9,
+        get_guild_members_v9,
+    )
+except ImportError:
+    # Fallback for direct execution or when package structure differs
+    src_path = Path(__file__).parent
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+    from discord_api import (
+        send_message_v9,
+        get_channel_messages_v9,
+        get_guild_v9,
+        get_guild_channels_v9,
+        get_current_user_guilds_v9,
+        delete_message_v9,
+        create_reaction_v9,
+        get_user_v9,
+        get_guild_members_v9,
+    )
 
 
 class MessageResponse(BaseModel):

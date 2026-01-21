@@ -18,5 +18,5 @@ dependencies = [
 [project.scripts]
 discord-mcp = "src.main:main"
 
-[tool.uv]
-dev-dependencies = []
+[tool.hatchling.build]
+packages = ["src"]
