@@ -77,11 +77,36 @@ async def discord_api_request(
             # Raise exception for HTTP errors
             if response.status >= 400:
                 error_text = await response.text()
+                # Try to parse JSON error for better error messages
+                error_code = ""
+                error_message = error_text
+                try:
+                    import json
+                    error_json = json.loads(error_text)
+                    error_code = error_json.get("code", "")
+                    error_message = error_json.get("message", error_text)
+                except (ValueError, json.JSONDecodeError):
+                    # Not JSON, use raw text
+                    pass
+                
+                # Provide helpful context for common errors
+                if response.status == 403:
+                    if error_code == 50001:  # Missing Access
+                        error_message = f"Missing Access (403): {error_message}. The bot may lack required permissions. For list_channels, ensure the bot has 'View Channels' permission in the server."
+                    elif error_code == 50013:  # Missing Permissions
+                        error_message = f"Missing Permissions (403): {error_message}. Check bot permissions in server settings. The bot needs 'View Channels' permission to list channels."
+                    else:
+                        error_message = f"Permission denied (403): {error_message}. The bot may lack required permissions. Check server role permissions."
+                elif response.status == 401:
+                    error_message = f"Unauthorized (401): {error_message}. Check that DISCORD_TOKEN is valid, not expired, and properly configured in the hosted MCP server environment."
+                elif response.status == 404:
+                    error_message = f"Not Found (404): {error_message}. The resource may not exist or the bot may not have access."
+                
                 raise aiohttp.ClientResponseError(
                     request_info=response.request_info,
                     history=response.history,
                     status=response.status,
-                    message=f"Discord API error: {error_text}"
+                    message=f"Discord API error [{error_code}]: {error_message}" if error_code else f"Discord API error: {error_message}"
                 )
             
             # Handle empty responses (e.g., 204 No Content)

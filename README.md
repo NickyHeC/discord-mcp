@@ -44,8 +44,14 @@ Before using this MCP server, you need to create a Discord application and confi
 5. **Invite Your Bot to a Server**
    - Go to **OAuth2 > URL Generator**
    - Select the `bot` scope
-   - Select permissions: `Send Messages`, `Read Message History`, `View Channels`, `Manage Messages`
+   - **IMPORTANT**: Select the following permissions:
+     - ✅ **View Channels** - Required for `list_channels` tool
+     - ✅ **Send Messages** - Required for `send_message` tool
+     - ✅ **Read Message History** - Required for `read_messages` tool
+     - ✅ **Manage Messages** - Required for `delete_message` tool
+     - ✅ **Add Reactions** - Required for `add_reaction` tool
    - Copy the generated URL and invite the bot to your server
+   - **Note**: The tool descriptions mention OAuth2 scopes like `guilds.channels.read`, but for bot tokens, these are handled via bot permissions. Ensure the bot has the required permissions listed above.
 
 ## Installation
 
@@ -170,22 +176,53 @@ discord-mcp/
 
 ### Common Issues
 
-1. **403 Forbidden / Missing Access**
-   - Ensure the bot has the required permissions in the channel
-   - Check that the bot's role has appropriate permissions in the server
+1. **403 Forbidden / Missing Access (especially for `list_channels`)**
+   - **For hosted MCP servers**: Ensure the bot token has the required permissions when it was invited to the server
+   - Check that the bot's role has "View Channels" permission in the server
+   - Go to Server Settings > Roles > [Your Bot's Role] and verify "View Channels" is enabled
+   - If the bot was invited without proper permissions, re-invite it with all required permissions (see step 5 in Discord Bot Setup)
+   - **For hosted servers on dedaluslabs.ai**: Verify that `DISCORD_TOKEN` is correctly configured in the server's environment variables
+   - The error response will include detailed information about what permission is missing
 
-2. **SSL Certificate Errors**
+2. **401 Unauthorized**
+   - Verify the `DISCORD_TOKEN` is correct and not expired
+   - Check that there are no extra spaces or quotes around the token in your `.env` file
+   - For hosted MCP servers, ensure the token is properly passed via the Connection/SecretValues mechanism
+   - Regenerate the token in the Discord Developer Portal if needed
+
+3. **`list_channels` returns error field in hosted MCP server**
+   - This usually indicates a permission issue (403) or authentication issue (401)
+   - Check the `error` field in the `ChannelsResponse` for specific details
+   - Verify the bot has "View Channels" permission in the target server
+   - Ensure the bot token is valid and properly configured in the hosted environment
+   - The agent should check the `error` field in the response and handle it gracefully
+
+4. **SSL Certificate Errors**
    - The code uses `certifi` for SSL certificate verification
    - If you encounter SSL errors, ensure `certifi` is installed: `pip3 install certifi`
 
-3. **Bot Token Not Working**
-   - Verify the token is correct in your `.env` file
-   - Ensure there are no extra spaces or quotes around the token
-   - Regenerate the token in the Discord Developer Portal if needed
-
-4. **Intents Not Working**
+5. **Intents Not Working**
    - Make sure you've enabled the required Privileged Gateway Intents in the Discord Developer Portal
    - Restart the bot after enabling intents
+
+### Hosted MCP Server Issues
+
+When using this MCP server on a hosted platform (e.g., dedaluslabs.ai):
+
+1. **Credentials Configuration**
+   - Ensure `DISCORD_TOKEN`, `APP_ID`, and `PUBLIC_KEY` are set in the hosted environment
+   - The credentials should be passed via the Connection/SecretValues mechanism if using Dedalus Labs
+   - Verify credentials are not expired or invalid
+
+2. **Permission Errors**
+   - Hosted servers use the same bot token, so permissions must be granted when the bot is invited
+   - If `list_channels` fails with 403, the bot needs "View Channels" permission in the server
+   - Re-invite the bot with proper permissions if needed
+
+3. **Error Visibility**
+   - The `list_channels` tool now returns errors in the `error` field of `ChannelsResponse`
+   - Agents should check `response.error` to see detailed error messages
+   - Error messages include specific guidance on how to fix permission issues
 
 ## API Documentation
 

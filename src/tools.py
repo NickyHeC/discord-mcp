@@ -251,23 +251,29 @@ async def list_channels(server_id: str) -> ChannelsResponse:
         )
     except Exception as e:
         error_msg = str(e)
-        if "403" in error_msg or "Missing Access" in error_msg:
+        if "403" in error_msg or "Missing Access" in error_msg or "Missing Permissions" in error_msg:
             return ChannelsResponse(
                 count=0,
                 channels=[],
-                error=f"Missing permissions to access channels in server {server_id}. The bot may not have 'View Channels' permission or the 'guilds.channels.read' scope."
+                error=f"Permission denied (403) for server {server_id}. The bot needs 'View Channels' permission in the server. To fix: 1) Go to Server Settings > Roles > [Bot Role] and enable 'View Channels', or 2) Re-invite the bot with 'View Channels' permission. Error details: {error_msg}"
             )
         elif "404" in error_msg or "Unknown Guild" in error_msg:
             return ChannelsResponse(
                 count=0,
                 channels=[],
-                error=f"Server {server_id} not found. The bot may not be a member of this server."
+                error=f"Server {server_id} not found (404). The bot may not be a member of this server. Verify the server_id is correct and the bot has been invited. Error details: {error_msg}"
+            )
+        elif "401" in error_msg or "Unauthorized" in error_msg:
+            return ChannelsResponse(
+                count=0,
+                channels=[],
+                error=f"Authentication failed (401) for server {server_id}. The DISCORD_TOKEN may be invalid, expired, or not properly configured in the hosted MCP server environment. Error details: {error_msg}"
             )
         else:
             return ChannelsResponse(
                 count=0,
                 channels=[],
-                error=f"Failed to list channels: {error_msg}"
+                error=f"Failed to list channels for server {server_id}. Error: {error_msg}"
             )
 
 
