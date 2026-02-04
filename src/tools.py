@@ -221,60 +221,63 @@ async def get_server_info(server_id: str) -> ServerInfo:
 
 
 @tool(description="List all channels in a Discord server. Requires guilds.channels.read scope.")
-async def list_channels(server_id: str) -> ChannelsResponse:
+async def list_channels(server_id: str) -> dict:
+    """
+    Returns a dict with:
+    - count: int - number of channels
+    - channels: list[dict] - list of channel objects, each with: id (str), name (str), type (int), position (int or None), parent_id (str or None)
+    - error: str or None - error message if something went wrong
+    """
     try:
         channels = await get_guild_channels_v9(server_id)
         
         # Ensure channels is a list
         if not isinstance(channels, list):
-            return ChannelsResponse(
-                count=0,
-                channels=[],
-                error=f"Expected list of channels, got {type(channels)}: {channels}"
-            )
+            return {
+                "count": 0,
+                "channels": [],
+                "error": f"Expected list of channels, got {type(channels)}: {channels}"
+            }
         
+        # Format channels as plain dicts (no nested Pydantic models)
         formatted_channels = []
         for channel in channels:
             if not isinstance(channel, dict):
                 continue
-            formatted_channels.append(ChannelInfo(
-                id=channel.get("id", ""),
-                name=channel.get("name", ""),
-                type=channel.get("type", 0),
-                position=channel.get("position"),
-                parent_id=channel.get("parent_id")
-            ))
+            # Create flat dict with only primitives, omit None values
+            channel_dict = {
+                "id": str(channel.get("id", "")),
+                "name": str(channel.get("name", "")),
+                "type": int(channel.get("type", 0))
+            }
+            # Only include optional fields if they have values
+            if channel.get("position") is not None:
+                channel_dict["position"] = int(channel.get("position"))
+            if channel.get("parent_id"):
+                channel_dict["parent_id"] = str(channel.get("parent_id"))
+            formatted_channels.append(channel_dict)
         
-        return ChannelsResponse(
-            count=len(formatted_channels),
-            channels=formatted_channels
-        )
+        return {
+            "count": len(formatted_channels),
+            "channels": formatted_channels
+        }
     except Exception as e:
         error_msg = str(e)
+        error_detail = ""
         if "403" in error_msg or "Missing Access" in error_msg or "Missing Permissions" in error_msg:
-            return ChannelsResponse(
-                count=0,
-                channels=[],
-                error=f"Permission denied (403) for server {server_id}. The bot needs 'View Channels' permission in the server. To fix: 1) Go to Server Settings > Roles > [Bot Role] and enable 'View Channels', or 2) Re-invite the bot with 'View Channels' permission. Error details: {error_msg}"
-            )
+            error_detail = f"Permission denied (403) for server {server_id}. The bot needs 'View Channels' permission in the server. To fix: 1) Go to Server Settings > Roles > [Bot Role] and enable 'View Channels', or 2) Re-invite the bot with 'View Channels' permission. Error details: {error_msg}"
         elif "404" in error_msg or "Unknown Guild" in error_msg:
-            return ChannelsResponse(
-                count=0,
-                channels=[],
-                error=f"Server {server_id} not found (404). The bot may not be a member of this server. Verify the server_id is correct and the bot has been invited. Error details: {error_msg}"
-            )
+            error_detail = f"Server {server_id} not found (404). The bot may not be a member of this server. Verify the server_id is correct and the bot has been invited. Error details: {error_msg}"
         elif "401" in error_msg or "Unauthorized" in error_msg:
-            return ChannelsResponse(
-                count=0,
-                channels=[],
-                error=f"Authentication failed (401) for server {server_id}. The DISCORD_TOKEN may be invalid, expired, or not properly configured in the hosted MCP server environment. Error details: {error_msg}"
-            )
+            error_detail = f"Authentication failed (401) for server {server_id}. The DISCORD_TOKEN may be invalid, expired, or not properly configured in the hosted MCP server environment. Error details: {error_msg}"
         else:
-            return ChannelsResponse(
-                count=0,
-                channels=[],
-                error=f"Failed to list channels for server {server_id}. Error: {error_msg}"
-            )
+            error_detail = f"Failed to list channels for server {server_id}. Error: {error_msg}"
+        
+        return {
+            "count": 0,
+            "channels": [],
+            "error": error_detail
+        }
 
 
 @tool(description="Add a reaction emoji to a message.")
