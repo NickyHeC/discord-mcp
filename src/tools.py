@@ -130,39 +130,60 @@ async def send_message(channel_id: str, content: str) -> SendMessageResponse:
 
 
 @tool(description="Read recent messages from a Discord channel. Requires messages.read scope.")
-async def read_messages(channel_id: str, limit: int = 50) -> MessagesResponse:
+async def read_messages(channel_id: str, limit: int = 50) -> dict:
+    """
+    Returns a dict with:
+    - count: int - number of messages
+    - messages: list[dict] - list of message objects, each with: id (str), author (str), content (str), timestamp (str or None), attachments (int)
+    """
     try:
         limit = min(limit, 100)
         messages = await get_channel_messages_v9(channel_id, limit=limit)
         
         if not isinstance(messages, list):
-            raise ValueError(f"Expected list of messages, got {type(messages)}")
+            return {
+                "count": 0,
+                "messages": [],
+                "error": f"Expected list of messages, got {type(messages)}"
+            }
         
+        # Format messages as plain dicts (no nested Pydantic models)
         formatted_messages = []
         for msg in messages:
             if not isinstance(msg, dict):
                 continue
             author = msg.get("author", {})
-            formatted_messages.append(MessageResponse(
-                id=msg.get("id", ""),
-                author=f"{author.get('username', 'Unknown')}#{author.get('discriminator', '0000')}",
-                content=msg.get("content", ""),
-                timestamp=msg.get("timestamp"),
-                attachments=len(msg.get("attachments", []))
-            ))
+            # Create flat dict with only primitives
+            message_dict = {
+                "id": str(msg.get("id", "")),
+                "author": f"{author.get('username', 'Unknown')}#{author.get('discriminator', '0000')}",
+                "content": str(msg.get("content", "")),
+                "attachments": int(len(msg.get("attachments", [])))
+            }
+            # Only include timestamp if it exists
+            if msg.get("timestamp"):
+                message_dict["timestamp"] = str(msg.get("timestamp"))
+            formatted_messages.append(message_dict)
         
-        return MessagesResponse(
-            count=len(formatted_messages),
-            messages=formatted_messages
-        )
+        return {
+            "count": len(formatted_messages),
+            "messages": formatted_messages
+        }
     except Exception as e:
         error_msg = str(e)
+        error_detail = ""
         if "403" in error_msg or "Missing Access" in error_msg:
-            raise ValueError(f"Missing permissions to read messages in channel {channel_id}. The bot needs 'Read Message History' permission and 'messages.read' scope.")
+            error_detail = f"Missing permissions to read messages in channel {channel_id}. The bot needs 'Read Message History' permission and 'messages.read' scope. Error: {error_msg}"
         elif "404" in error_msg:
-            raise ValueError(f"Channel {channel_id} not found.")
+            error_detail = f"Channel {channel_id} not found. Error: {error_msg}"
         else:
-            raise ValueError(f"Failed to read messages: {error_msg}")
+            error_detail = f"Failed to read messages: {error_msg}"
+        
+        return {
+            "count": 0,
+            "messages": [],
+            "error": error_detail
+        }
 
 
 @tool(description="List all Discord servers (guilds) the bot is in.")
@@ -192,32 +213,67 @@ async def list_servers() -> List[dict]:
 
 
 @tool(description="Get detailed information about a Discord server.")
-async def get_server_info(server_id: str) -> ServerInfo:
+async def get_server_info(server_id: str) -> dict:
+    """
+    Returns a dict with server information:
+    - id: str - server ID
+    - name: str - server name
+    - description: str or None - server description
+    - member_count: int or None - approximate member count
+    - owner_id: str or None - owner user ID
+    - icon_url: str or None - server icon URL
+    - features: list[str] - server features
+    - verification_level: int or None - verification level
+    - premium_tier: int or None - premium tier
+    - error: str or None - error message if something went wrong
+    """
     try:
         guild = await get_guild_v9(server_id)
         
         if not isinstance(guild, dict):
-            raise ValueError(f"Expected dict for guild info, got {type(guild)}")
+            return {
+                "id": "",
+                "name": "",
+                "error": f"Expected dict for guild info, got {type(guild)}"
+            }
         
-        return ServerInfo(
-            id=guild.get("id", ""),
-            name=guild.get("name", ""),
-            description=guild.get("description"),
-            member_count=guild.get("approximate_member_count"),
-            owner_id=guild.get("owner_id"),
-            icon_url=f"https://cdn.discordapp.com/icons/{guild.get('id')}/{guild.get('icon')}.png" if guild.get("icon") else None,
-            features=guild.get("features", []),
-            verification_level=guild.get("verification_level"),
-            premium_tier=guild.get("premium_tier")
-        )
+        # Create flat dict with only primitives
+        result = {
+            "id": str(guild.get("id", "")),
+            "name": str(guild.get("name", "")),
+            "features": [str(f) for f in guild.get("features", [])]
+        }
+        
+        # Only include optional fields if they have values
+        if guild.get("description"):
+            result["description"] = str(guild.get("description"))
+        if guild.get("approximate_member_count") is not None:
+            result["member_count"] = int(guild.get("approximate_member_count"))
+        if guild.get("owner_id"):
+            result["owner_id"] = str(guild.get("owner_id"))
+        if guild.get("icon"):
+            result["icon_url"] = f"https://cdn.discordapp.com/icons/{guild.get('id')}/{guild.get('icon')}.png"
+        if guild.get("verification_level") is not None:
+            result["verification_level"] = int(guild.get("verification_level"))
+        if guild.get("premium_tier") is not None:
+            result["premium_tier"] = int(guild.get("premium_tier"))
+        
+        return result
     except Exception as e:
         error_msg = str(e)
+        error_detail = ""
         if "403" in error_msg or "Missing Access" in error_msg:
-            raise ValueError(f"Missing permissions to access server {server_id}. The bot may not be a member of this server.")
+            error_detail = f"Missing permissions to access server {server_id}. The bot may not be a member of this server. Error: {error_msg}"
         elif "404" in error_msg or "Unknown Guild" in error_msg:
-            raise ValueError(f"Server {server_id} not found.")
+            error_detail = f"Server {server_id} not found. Error: {error_msg}"
         else:
-            raise ValueError(f"Failed to get server info: {error_msg}")
+            error_detail = f"Failed to get server info: {error_msg}"
+        
+        return {
+            "id": server_id,
+            "name": "",
+            "error": error_detail
+        }
 
 
 @tool(description="List all channels in a Discord server. Requires guilds.channels.read scope.")
@@ -317,64 +373,119 @@ async def delete_message(channel_id: str, message_id: str) -> ActionResponse:
 
 
 @tool(description="Get information about a Discord user.")
-async def get_user_info(user_id: str) -> UserInfo:
+async def get_user_info(user_id: str) -> dict:
+    """
+    Returns a dict with user information:
+    - id: str - user ID
+    - username: str - username
+    - discriminator: str - discriminator
+    - global_name: str or None - global display name
+    - bot: bool - whether user is a bot
+    - avatar_url: str or None - avatar URL
+    - error: str or None - error message if something went wrong
+    """
     try:
         user = await get_user_v9(user_id)
         
         if not isinstance(user, dict):
-            raise ValueError(f"Expected dict for user info, got {type(user)}")
+            return {
+                "id": user_id,
+                "username": "",
+                "discriminator": "0000",
+                "bot": False,
+                "error": f"Expected dict for user info, got {type(user)}"
+            }
         
-        return UserInfo(
-            id=user.get("id", ""),
-            username=user.get("username", ""),
-            discriminator=user.get("discriminator", "0000"),
-            global_name=user.get("global_name"),
-            bot=user.get("bot", False),
-            avatar_url=f"https://cdn.discordapp.com/avatars/{user.get('id')}/{user.get('avatar')}.png" if user.get("avatar") else None
-        )
+        # Create flat dict with only primitives
+        result = {
+            "id": str(user.get("id", "")),
+            "username": str(user.get("username", "")),
+            "discriminator": str(user.get("discriminator", "0000")),
+            "bot": bool(user.get("bot", False))
+        }
+        
+        # Only include optional fields if they have values
+        if user.get("global_name"):
+            result["global_name"] = str(user.get("global_name"))
+        if user.get("avatar"):
+            result["avatar_url"] = f"https://cdn.discordapp.com/avatars/{user.get('id')}/{user.get('avatar')}.png"
+        
+        return result
     except Exception as e:
         error_msg = str(e)
+        error_detail = ""
         if "404" in error_msg:
-            raise ValueError(f"User {user_id} not found.")
+            error_detail = f"User {user_id} not found. Error: {error_msg}"
         else:
-            raise ValueError(f"Failed to get user info: {error_msg}")
+            error_detail = f"Failed to get user info: {error_msg}"
+        
+        return {
+            "id": user_id,
+            "username": "",
+            "discriminator": "0000",
+            "bot": False,
+            "error": error_detail
+        }
 
 
 @tool(description="List members in a Discord server. Requires guilds.members.read scope.")
-async def list_members(server_id: str, limit: int = 100) -> MembersResponse:
+async def list_members(server_id: str, limit: int = 100) -> dict:
+    """
+    Returns a dict with:
+    - count: int - number of members
+    - members: list[dict] - list of member objects, each with: id (str), username (str), discriminator (str), global_name (str or None), bot (bool), joined_at (str or None)
+    - error: str or None - error message if something went wrong
+    """
     try:
         limit = min(limit, 1000)
         members = await get_guild_members_v9(server_id, limit=limit)
         
         if not isinstance(members, list):
-            raise ValueError(f"Expected list of members, got {type(members)}")
+            return {
+                "count": 0,
+                "members": [],
+                "error": f"Expected list of members, got {type(members)}"
+            }
         
+        # Format members as plain dicts (no nested Pydantic models)
         formatted_members = []
         for member in members:
             if not isinstance(member, dict):
                 continue
             user = member.get("user", {})
-            formatted_members.append(MemberInfo(
-                id=user.get("id", ""),
-                username=user.get("username", ""),
-                discriminator=user.get("discriminator", "0000"),
-                global_name=user.get("global_name"),
-                bot=user.get("bot", False),
-                joined_at=member.get("joined_at")
-            ))
+            # Create flat dict with only primitives
+            member_dict = {
+                "id": str(user.get("id", "")),
+                "username": str(user.get("username", "")),
+                "discriminator": str(user.get("discriminator", "0000")),
+                "bot": bool(user.get("bot", False))
+            }
+            # Only include optional fields if they have values
+            if user.get("global_name"):
+                member_dict["global_name"] = str(user.get("global_name"))
+            if member.get("joined_at"):
+                member_dict["joined_at"] = str(member.get("joined_at"))
+            formatted_members.append(member_dict)
         
-        return MembersResponse(
-            count=len(formatted_members),
-            members=formatted_members
-        )
+        return {
+            "count": len(formatted_members),
+            "members": formatted_members
+        }
     except Exception as e:
         error_msg = str(e)
+        error_detail = ""
         if "403" in error_msg or "Missing Access" in error_msg:
-            raise ValueError(f"Missing permissions to list members in server {server_id}. The bot needs 'guilds.members.read' scope and appropriate permissions.")
+            error_detail = f"Missing permissions to list members in server {server_id}. The bot needs 'guilds.members.read' scope and appropriate permissions. Error: {error_msg}"
         elif "404" in error_msg:
-            raise ValueError(f"Server {server_id} not found.")
+            error_detail = f"Server {server_id} not found. Error: {error_msg}"
         else:
-            raise ValueError(f"Failed to list members: {error_msg}")
+            error_detail = f"Failed to list members: {error_msg}"
+        
+        return {
+            "count": 0,
+            "members": [],
+            "error": error_detail
+        }
 
 
 discord_tools = [
