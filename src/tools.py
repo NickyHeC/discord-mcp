@@ -73,6 +73,7 @@ class ChannelInfo(BaseModel):
 class ChannelsResponse(BaseModel):
     count: int
     channels: List[ChannelInfo]
+    error: Optional[str] = None
 
 
 class MemberInfo(BaseModel):
@@ -226,7 +227,11 @@ async def list_channels(server_id: str) -> ChannelsResponse:
         
         # Ensure channels is a list
         if not isinstance(channels, list):
-            raise ValueError(f"Expected list of channels, got {type(channels)}: {channels}")
+            return ChannelsResponse(
+                count=0,
+                channels=[],
+                error=f"Expected list of channels, got {type(channels)}: {channels}"
+            )
         
         formatted_channels = []
         for channel in channels:
@@ -247,11 +252,23 @@ async def list_channels(server_id: str) -> ChannelsResponse:
     except Exception as e:
         error_msg = str(e)
         if "403" in error_msg or "Missing Access" in error_msg:
-            raise ValueError(f"Missing permissions to access channels in server {server_id}. The bot may not have 'View Channels' permission or the 'guilds.channels.read' scope.")
+            return ChannelsResponse(
+                count=0,
+                channels=[],
+                error=f"Missing permissions to access channels in server {server_id}. The bot may not have 'View Channels' permission or the 'guilds.channels.read' scope."
+            )
         elif "404" in error_msg or "Unknown Guild" in error_msg:
-            raise ValueError(f"Server {server_id} not found. The bot may not be a member of this server.")
+            return ChannelsResponse(
+                count=0,
+                channels=[],
+                error=f"Server {server_id} not found. The bot may not be a member of this server."
+            )
         else:
-            raise ValueError(f"Failed to list channels: {error_msg}")
+            return ChannelsResponse(
+                count=0,
+                channels=[],
+                error=f"Failed to list channels: {error_msg}"
+            )
 
 
 @tool(description="Add a reaction emoji to a message.")
