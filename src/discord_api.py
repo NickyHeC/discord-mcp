@@ -117,11 +117,15 @@ async def get_channel_messages_v9(
     if after:
         params["after"] = after
     
-    return await discord_api_request(
+    result = await discord_api_request(
         "GET",
         f"/channels/{channel_id}/messages",
         params=params,
     )
+    # Ensure we return a list
+    if not isinstance(result, list):
+        raise ValueError(f"Expected list of messages, got {type(result)}: {result}")
+    return result
 
 
 async def get_guild_v9(guild_id: str) -> Dict[str, Any]:
@@ -131,13 +135,21 @@ async def get_guild_v9(guild_id: str) -> Dict[str, Any]:
 
 async def get_guild_channels_v9(guild_id: str) -> list[Dict[str, Any]]:
     """Get guild channels using Discord API v9."""
-    return await discord_api_request("GET", f"/guilds/{guild_id}/channels")
+    result = await discord_api_request("GET", f"/guilds/{guild_id}/channels")
+    # Ensure we return a list
+    if not isinstance(result, list):
+        raise ValueError(f"Expected list of channels, got {type(result)}: {result}")
+    return result
 
 
 async def get_current_user_guilds_v9(limit: int = 200) -> list[Dict[str, Any]]:
     """Get current user's guilds using Discord API v9."""
     params = {"limit": min(limit, 200)}
-    return await discord_api_request("GET", "/users/@me/guilds", params=params)
+    result = await discord_api_request("GET", "/users/@me/guilds", params=params)
+    # Ensure we return a list
+    if not isinstance(result, list):
+        raise ValueError(f"Expected list of guilds, got {type(result)}: {result}")
+    return result
 
 
 async def delete_message_v9(channel_id: str, message_id: str) -> None:
@@ -180,8 +192,12 @@ async def get_guild_members_v9(
     if after:
         params["after"] = after
     
-    return await discord_api_request(
+    result = await discord_api_request(
         "GET",
         f"/guilds/{guild_id}/members",
         params=params,
     )
+    # Ensure we return a list
+    if not isinstance(result, list):
+        raise ValueError(f"Expected list of members, got {type(result)}: {result}")
+    return result
