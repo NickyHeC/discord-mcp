@@ -103,15 +103,19 @@ The server will start on port 8080 (or the port specified in the `PORT` environm
 
 The Discord MCP server provides the following tools:
 
-- **`send_message`** - Send a message to a Discord channel
-- **`read_messages`** - Read recent messages from a channel (requires `messages.read` scope)
-- **`list_servers`** - List all Discord servers the bot is in
-- **`get_server_info`** - Get detailed information about a Discord server
-- **`list_channels`** - List all channels in a server (requires `guilds.channels.read` scope)
+- **`send_message`** - Send a message to a Discord channel. Messages longer than 2000 characters are automatically split into multiple messages.
+- **`read_messages`** - Read recent messages from a channel (requires `messages.read` scope). Returns a dict with `count`, `messages` (list of message dicts), and optional `error` field.
+- **`list_servers`** - List all Discord servers the bot is in. Returns a list of server dicts with `id`, `name`, `icon`, `owner`, and `permissions`.
+- **`get_server_info`** - Get detailed information about a Discord server. Returns a dict with server details including `id`, `name`, `description`, `member_count`, `features`, etc.
+- **`list_channels`** - List all channels in a server (requires `guilds.channels.read` scope). Returns a dict with `count`, `channels` (list of channel dicts), and optional `error` field.
 - **`add_reaction`** - Add a reaction emoji to a message
 - **`delete_message`** - Delete a message from a channel
-- **`get_user_info`** - Get information about a Discord user
-- **`list_members`** - List members in a server (requires `guilds.members.read` scope)
+- **`get_user_info`** - Get information about a Discord user. Returns a dict with user details including `id`, `username`, `discriminator`, `global_name`, `bot`, and `avatar_url`.
+- **`list_members`** - List members in a server (requires `guilds.members.read` scope). Returns a dict with `count`, `members` (list of member dicts), and optional `error` field.
+
+### Response Format
+
+All tools return flat JSON-serializable dictionaries (no nested Pydantic models) to ensure compatibility with hosted MCP servers. Read operations that may fail include an optional `error` field in the response for graceful error handling.
 
 ## Configuration
 
@@ -134,29 +138,50 @@ Make sure your bot has the necessary permissions in the channels where you want 
 - **Manage Messages** - Required to delete messages
 - **Add Reactions** - Required to add reactions
 
+## Features
+
+### Automatic Message Chunking
+
+The `send_message` tool automatically handles Discord's 2000 character limit by splitting long messages into multiple messages. This is especially useful when sending long agendas or formatted content.
+
+- Messages are split on line boundaries when possible
+- Very long lines are hard-split if necessary
+- Each chunk is sent as a separate message
+- The tool returns the ID of the last message sent
+
+### Flat JSON Schema
+
+All tools return flat, JSON-serializable dictionaries to ensure compatibility with hosted MCP servers and avoid schema validation issues. This means:
+
+- No nested Pydantic models in responses
+- All values are JSON primitives (str, int, bool, list, dict)
+- Optional fields are omitted rather than set to null
+- Error information is included in an optional `error` field
+
+### Enhanced Error Handling
+
+- Detailed error messages with specific Discord error codes
+- Full error response logging for debugging
+- Graceful error handling in read operations (errors returned in response, not raised)
+- Specific handling for common errors (400, 401, 403, 404, 429)
+
 ## Testing
 
-### Test Scripts
+You can test the tools directly using Python:
 
-The repository includes test scripts to verify the setup:
+```python
+import asyncio
+from src.tools import send_message, read_messages, list_channels
 
-1. **Test reading messages:**
-   ```bash
-   python3 test_break_in_server.py
-   ```
-   This script retrieves the most recent message from the #announcements channel.
+# Test sending a message
+asyncio.run(send_message("channel_id", "Hello, Discord!"))
 
-2. **Test sending messages:**
-   ```bash
-   python3 send_test_message.py
-   ```
-   This script sends a test message to a Discord channel.
+# Test reading messages
+asyncio.run(read_messages("channel_id", limit=10))
 
-3. **Check channel access:**
-   ```bash
-   python3 check_channels.py
-   ```
-   This script lists all channels the bot can access.
+# Test listing channels
+asyncio.run(list_channels("server_id"))
+```
 
 ## Project Structure
 
@@ -190,20 +215,32 @@ discord-mcp/
    - For hosted MCP servers, ensure the token is properly passed via the Connection/SecretValues mechanism
    - Regenerate the token in the Discord Developer Portal if needed
 
-3. **`list_channels` returns error field in hosted MCP server**
-   - This usually indicates a permission issue (403) or authentication issue (401)
-   - Check the `error` field in the `ChannelsResponse` for specific details
-   - Verify the bot has "View Channels" permission in the target server
-   - Ensure the bot token is valid and properly configured in the hosted environment
-   - The agent should check the `error` field in the response and handle it gracefully
+3. **Message too long (400 / Invalid Form Body)**
+   - Discord has a 2000 character limit per message
+   - The `send_message` tool automatically splits messages longer than 2000 characters into multiple messages
+   - If you still see this error, check the error message for details about what went wrong
+   - Error responses now include full validation details for easier debugging
 
-4. **SSL Certificate Errors**
+4. **Read tools return error field in hosted MCP server**
+   - All read tools (`list_channels`, `read_messages`, `list_members`, etc.) may return an `error` field in the response
+   - This usually indicates a permission issue (403) or authentication issue (401)
+   - Check the `error` field in the response dict for specific details
+   - Verify the bot has the required permissions in the target server
+   - Ensure the bot token is valid and properly configured in the hosted environment
+   - Agents should check the `error` field in responses and handle errors gracefully
+
+5. **SSL Certificate Errors**
    - The code uses `certifi` for SSL certificate verification
    - If you encounter SSL errors, ensure `certifi` is installed: `pip3 install certifi`
 
-5. **Intents Not Working**
+6. **Intents Not Working**
    - Make sure you've enabled the required Privileged Gateway Intents in the Discord Developer Portal
    - Restart the bot after enabling intents
+
+7. **Rate Limiting (429)**
+   - Discord may rate limit requests if you send too many messages too quickly
+   - The error message will include retry timing information
+   - Implement backoff logic in your agent when handling 429 errors
 
 ### Hosted MCP Server Issues
 
@@ -220,9 +257,16 @@ When using this MCP server on a hosted platform (e.g., dedaluslabs.ai):
    - Re-invite the bot with proper permissions if needed
 
 3. **Error Visibility**
-   - The `list_channels` tool now returns errors in the `error` field of `ChannelsResponse`
-   - Agents should check `response.error` to see detailed error messages
+   - All read tools return errors in the `error` field of their response dicts
+   - Agents should check `response.get("error")` to see detailed error messages
    - Error messages include specific guidance on how to fix permission issues
+   - Full error responses are logged for debugging (check server logs for details)
+
+4. **Message Chunking**
+   - Long messages (>2000 chars) are automatically split into multiple messages
+   - Each chunk is sent as a separate message
+   - The tool returns the ID of the last message sent
+   - This prevents 400 errors from message length violations
 
 ## API Documentation
 
@@ -231,7 +275,6 @@ This server uses Discord REST API version 9. For detailed API documentation, ref
 - **[Discord API Reference](https://discord.com/developers/docs/reference)** - Complete API reference
 - **[Discord API v9 Documentation](API_V9.md)** - API v9 specific documentation
 - **[Authentication Guide](AUTHENTICATION.md)** - Authentication setup guide
-- **[API Compliance](API_COMPLIANCE.md)** - Compliance with Discord API standards
 
 ## License
 
