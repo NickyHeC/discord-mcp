@@ -6,6 +6,41 @@ from typing import List, Optional
 from dedalus_mcp import tool
 from pydantic import BaseModel
 
+# Discord message length limit
+DISCORD_MAX = 2000
+
+
+def chunk_discord_message(text: str, limit: int = DISCORD_MAX) -> List[str]:
+    """
+    Split a message into chunks that fit within Discord's character limit.
+    Attempts to split on line boundaries when possible.
+    """
+    text = text or ""
+    if len(text) <= limit:
+        return [text]
+
+    chunks = []
+    cur = ""
+    for line in text.splitlines(keepends=True):
+        # If a single line is too long, hard-split it
+        while len(line) > limit:
+            part, line = line[:limit], line[limit:]
+            if cur:
+                chunks.append(cur)
+                cur = ""
+            chunks.append(part)
+
+        if len(cur) + len(line) > limit:
+            if cur:
+                chunks.append(cur)
+            cur = line
+        else:
+            cur += line
+
+    if cur:
+        chunks.append(cur)
+    return chunks
+
 # Handle imports for both package and direct execution
 try:
     from .discord_api import (
@@ -109,22 +144,36 @@ class ActionResponse(BaseModel):
     message: str
 
 
-@tool(description="Send a message to a Discord channel.")
+@tool(description="Send a message to a Discord channel. Messages longer than 2000 characters will be automatically split into multiple messages.")
 async def send_message(channel_id: str, content: str) -> SendMessageResponse:
     try:
-        result = await send_message_v9(channel_id, content)
-        if not isinstance(result, dict):
-            raise ValueError(f"Unexpected response type: {type(result)}")
+        # Split message into chunks if it exceeds Discord's 2000 character limit
+        chunks = chunk_discord_message(content, DISCORD_MAX)
+        
+        last_id = "unknown"
+        for part in chunks:
+            result = await send_message_v9(channel_id, part)
+            if not isinstance(result, dict):
+                raise ValueError(f"Unexpected response type: {type(result)}")
+            last_id = result.get("id", last_id)
+        
         return SendMessageResponse(
             success=True,
-            message_id=result.get("id", "unknown")
+            message_id=last_id
         )
     except Exception as e:
         error_msg = str(e)
+        
+        # Check for message length errors (400/50035)
+        if "50035" in error_msg or "Invalid Form Body" in error_msg or ("400" in error_msg and ("2000" in error_msg or "content" in error_msg.lower())):
+            raise ValueError(f"Message too long for Discord (max 2000 chars per message). The message was automatically split, but an error occurred. Error: {error_msg}")
+        
         if "403" in error_msg or "Missing Access" in error_msg:
             raise ValueError(f"Missing permissions to send messages in channel {channel_id}. The bot needs 'Send Messages' permission.")
         elif "404" in error_msg:
             raise ValueError(f"Channel {channel_id} not found.")
+        elif "429" in error_msg:
+            raise ValueError("Rate limited by Discord (429). Please retry with backoff.")
         else:
             raise ValueError(f"Failed to send message: {error_msg}")
 

@@ -80,17 +80,36 @@ async def discord_api_request(
                 # Try to parse JSON error for better error messages
                 error_code = ""
                 error_message = error_text
+                error_details = {}
                 try:
                     import json
                     error_json = json.loads(error_text)
                     error_code = error_json.get("code", "")
                     error_message = error_json.get("message", error_text)
+                    # Include full error details for debugging (especially useful for 400 errors)
+                    error_details = error_json
                 except (ValueError, json.JSONDecodeError):
                     # Not JSON, use raw text
                     pass
                 
+                # Log the full error response for debugging (especially important for 400 errors)
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Discord API error [{response.status}]: {error_text}")
+                
                 # Provide helpful context for common errors
-                if response.status == 403:
+                if response.status == 400:
+                    # 400 errors often include detailed validation info in the response
+                    if error_code == 50035:  # Invalid Form Body
+                        # Include validation errors if present
+                        if "errors" in error_details:
+                            validation_errors = error_details.get("errors", {})
+                            error_message = f"Invalid Form Body (400): {error_message}. Validation errors: {validation_errors}"
+                        else:
+                            error_message = f"Invalid Form Body (400): {error_message}. Check request format and content length (max 2000 chars for messages)."
+                    else:
+                        error_message = f"Bad Request (400): {error_message}. Full error: {error_text}"
+                elif response.status == 403:
                     if error_code == 50001:  # Missing Access
                         error_message = f"Missing Access (403): {error_message}. The bot may lack required permissions. For list_channels, ensure the bot has 'View Channels' permission in the server."
                     elif error_code == 50013:  # Missing Permissions
@@ -101,6 +120,12 @@ async def discord_api_request(
                     error_message = f"Unauthorized (401): {error_message}. Check that DISCORD_TOKEN is valid, not expired, and properly configured in the hosted MCP server environment."
                 elif response.status == 404:
                     error_message = f"Not Found (404): {error_message}. The resource may not exist or the bot may not have access."
+                elif response.status == 429:
+                    retry_after = error_details.get("retry_after") if error_details else None
+                    if retry_after:
+                        error_message = f"Rate Limited (429): {error_message}. Retry after {retry_after} seconds."
+                    else:
+                        error_message = f"Rate Limited (429): {error_message}. Please retry with backoff."
                 
                 raise aiohttp.ClientResponseError(
                     request_info=response.request_info,
