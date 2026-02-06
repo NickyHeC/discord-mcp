@@ -14,9 +14,16 @@ import asyncio
 from pathlib import Path
 from dotenv import load_dotenv
 from dedalus_mcp import MCPServer
+from dedalus_mcp.auth import Connection, SecretKeys
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Define Discord connection for token secret
+discord_connection = Connection(
+    name="discord",
+    secrets=SecretKeys(token="token"),
+)
 
 # Handle imports for both package and direct execution
 try:
@@ -30,25 +37,35 @@ except ImportError:
 
 # --- Server ---
 
-server = MCPServer(name="discord-mcp")
+server = MCPServer(
+    name="discord-mcp",
+    connections=[discord_connection],
+)
 
 
 async def main() -> None:
     """Main entry point for the MCP server."""
     import logging
     
-    # Set up logging
-    logging.basicConfig(level=logging.INFO)
+    # Set up logging (in case it wasn't set up already)
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
     logger = logging.getLogger(__name__)
     
+    logger.info("Initializing Discord MCP Server...")
+    
     # Read Discord app configuration from local .env file
+    # These are optional for server startup but may be needed for certain features
     DISCORD_APP_ID = os.getenv("DISCORD_APP_ID")
     DISCORD_PUBLIC_KEY = os.getenv("DISCORD_PUBLIC_KEY")
     
     if not DISCORD_APP_ID or not DISCORD_PUBLIC_KEY:
-        raise RuntimeError("Missing Discord app configuration. DISCORD_APP_ID and DISCORD_PUBLIC_KEY must be set in .env file.")
-    
-    logger.info("Discord app configuration loaded from .env file")
+        logger.warning("DISCORD_APP_ID or DISCORD_PUBLIC_KEY not set in .env file. Some features may not work.")
+    else:
+        logger.info("Discord app configuration loaded from .env file")
     
     # Note: DISCORD_TOKEN is accessed via ctx.secrets["token"] in tools, not from environment variables
     logger.info("Discord token will be accessed via ctx.secrets['token'] when tools are called")
@@ -70,11 +87,20 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    import logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logger = logging.getLogger(__name__)
+    
     try:
+        logger.info("Starting Discord MCP Server...")
         asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Server stopped by user")
     except Exception as e:
-        import logging
-        logging.basicConfig(level=logging.ERROR)
-        logger = logging.getLogger(__name__)
         logger.error(f"Failed to start server: {e}", exc_info=True)
-        raise
+        # Don't raise - let the process exit naturally so we can see the error
+        import sys
+        sys.exit(1)
