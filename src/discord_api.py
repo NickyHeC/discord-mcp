@@ -16,7 +16,7 @@ load_dotenv()
 
 # Discord API Configuration
 DISCORD_API_BASE_URL = "https://discord.com/api/v9"
-# DISCORD_APP_ID, DISCORD_PUBLIC_KEY, and DISCORD_TOKEN are now accessed via ctx.secrets
+# DISCORD_APP_ID, DISCORD_PUBLIC_KEY, and token are now accessed via ctx.secrets
 
 
 async def discord_api_request(
@@ -37,7 +37,7 @@ async def discord_api_request(
     Args:
         method: HTTP method (GET, POST, PUT, DELETE, PATCH)
         endpoint: API endpoint (e.g., '/channels/{channel_id}/messages')
-        token: Discord bot token (defaults to ctx.secrets["DISCORD_TOKEN"])
+        token: Discord bot token (defaults to ctx.secrets["token"])
         data: Request body data (will be JSON encoded)
         params: URL query parameters
     
@@ -52,14 +52,25 @@ async def discord_api_request(
     if not token:
         try:
             ctx = get_context()
-            token = ctx.secrets["DISCORD_TOKEN"]
+            token = ctx.secrets["token"]
+            # Note: APP_ID and PUBLIC_KEY are retrieved but not used in REST API calls
+            # Discord REST API only requires the bot token in the Authorization header
+            # APP_ID and PUBLIC_KEY are used for:
+            #   - Webhook/interaction signature verification (future feature)
+            #   - OAuth2 flows (future feature)
+            #   - Application identification in some specific endpoints
+            # For reading/sending messages via REST API, only the token is needed
+            app_id = ctx.secrets["secret"]  # DISCORD_APP_ID (mapped from "secret" in Connection)
+            public_key = ctx.secrets["key"]  # DISCORD_PUBLIC_KEY (mapped from "key" in Connection)
         except (LookupError, KeyError) as e:
-            raise ValueError("Discord token not found. Ensure the token is passed as a secret from Dedalus (ctx.secrets['DISCORD_TOKEN']).") from e
+            raise ValueError("Discord token, app id, or public key not found. Ensure the token, app id, and public key are passed as a secret from Dedalus (ctx.secrets['token'], ctx.secrets['key'], ctx.secrets['secret']).") from e
     
     # Strip any whitespace from token (common .env mistake)
     token = token.strip()
     
     url = f"{DISCORD_API_BASE_URL}{endpoint}"
+    # Only the bot token is used in REST API requests
+    # APP_ID and PUBLIC_KEY are not sent in headers for standard REST API calls
     headers = {
         "Authorization": f"Bot {token}",
         "Content-Type": "application/json",
