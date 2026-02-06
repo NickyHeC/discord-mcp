@@ -21,8 +21,12 @@ load_dotenv()
 
 # Define Discord connection for token secret
 discord_connection = Connection(
-    name="discord",
-    secrets=SecretKeys(token="token"),
+    name="discord-mcp",
+    secrets=SecretKeys(
+        token="DISCORD_TOKEN",
+        key="DISCORD_PUBLIC_KEY",
+        secret="DISCORD_APP_ID",
+    ),
 )
 
 # Handle imports for both package and direct execution
@@ -57,18 +61,12 @@ async def main() -> None:
     
     logger.info("Initializing Discord MCP Server...")
     
-    # Read Discord app configuration from local .env file
-    # These are optional for server startup but may be needed for certain features
-    DISCORD_APP_ID = os.getenv("DISCORD_APP_ID")
-    DISCORD_PUBLIC_KEY = os.getenv("DISCORD_PUBLIC_KEY")
-    
-    if not DISCORD_APP_ID or not DISCORD_PUBLIC_KEY:
-        logger.warning("DISCORD_APP_ID or DISCORD_PUBLIC_KEY not set in .env file. Some features may not work.")
-    else:
-        logger.info("Discord app configuration loaded from .env file")
-    
-    # Note: DISCORD_TOKEN is accessed via ctx.secrets["token"] in tools, not from environment variables
-    logger.info("Discord token will be accessed via ctx.secrets['token'] when tools are called")
+    # Note: All Discord credentials (DISCORD_TOKEN, DISCORD_APP_ID, DISCORD_PUBLIC_KEY) 
+    # are now accessed via ctx.secrets in tools, not from environment variables
+    logger.info("Discord credentials will be accessed via ctx.secrets when tools are called:")
+    logger.info("  - ctx.secrets['DISCORD_TOKEN']")
+    logger.info("  - ctx.secrets['DISCORD_APP_ID']")
+    logger.info("  - ctx.secrets['DISCORD_PUBLIC_KEY']")
     
     # Collect all tools
     try:

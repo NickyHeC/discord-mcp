@@ -28,19 +28,19 @@ headers = {
 
 ### Environment Variables
 
-**Local `.env` file structure:**
+**Local `.env` file structure (optional, for local development):**
 ```
-DISCORD_APP_ID=<YOUR_APPLICATION_ID>
-DISCORD_PUBLIC_KEY=<YOUR_PUBLIC_KEY>
 PORT=8080  # Optional
 ```
 
 **Loading mechanism:**
-- Uses `python-dotenv` to load `.env` file
+- Uses `python-dotenv` to load `.env` file (mainly for `PORT` configuration)
 - `load_dotenv()` is called in both `discord_api.py` and `main.py`
-- `DISCORD_APP_ID` and `DISCORD_PUBLIC_KEY` are read from `.env` file and validated at startup
-- `DISCORD_TOKEN` is passed as a secret from Dedalus and accessed via `ctx.secrets["token"]` in tools
-- Token is retrieved using `get_context()` from `dedalus_mcp` and accessed as `ctx.secrets["token"]`
+- All Discord credentials (`DISCORD_TOKEN`, `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY`) are passed as secrets from Dedalus and accessed via `ctx.secrets` in tools:
+  - `ctx.secrets["DISCORD_TOKEN"]`
+  - `ctx.secrets["DISCORD_APP_ID"]`
+  - `ctx.secrets["DISCORD_PUBLIC_KEY"]`
+- Credentials are retrieved using `get_context()` from `dedalus_mcp` and accessed via the secrets dictionary
 
 ### Verification Checklist
 
