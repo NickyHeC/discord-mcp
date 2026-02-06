@@ -28,19 +28,19 @@ headers = {
 
 ### Environment Variables
 
-The bot token is loaded from the `.env` file:
-
-**`.env` file structure:**
+**Local `.env` file structure:**
 ```
-DISCORD_TOKEN=<YOUR_BOT_TOKEN>
-APP_ID=<YOUR_APP_ID>
-PUBLIC_KEY=<YOUR_PUBLIC_KEY>
+DISCORD_APP_ID=<YOUR_APPLICATION_ID>
+DISCORD_PUBLIC_KEY=<YOUR_PUBLIC_KEY>
+PORT=8080  # Optional
 ```
 
 **Loading mechanism:**
 - Uses `python-dotenv` to load `.env` file
 - `load_dotenv()` is called in both `discord_api.py` and `main.py`
-- Token is read via `os.getenv("DISCORD_TOKEN")`
+- `DISCORD_APP_ID` and `DISCORD_PUBLIC_KEY` are read from `.env` file and validated at startup
+- `DISCORD_TOKEN` is passed as a secret from Dedalus and accessed via `ctx.secrets["token"]` in tools
+- Token is retrieved using `get_context()` from `dedalus_mcp` and accessed as `ctx.secrets["token"]`
 
 ### Verification Checklist
 

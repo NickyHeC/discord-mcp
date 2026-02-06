@@ -75,11 +75,12 @@ Before using this MCP server, you need to create a Discord application and confi
    
    Create a `.env` file in the project root:
    ```bash
-   DISCORD_TOKEN=your_bot_token_here
-   APP_ID=your_application_id_here
-   PUBLIC_KEY=your_public_key_here
+   DISCORD_APP_ID=your_application_id_here
+   DISCORD_PUBLIC_KEY=your_public_key_here
    PORT=8080  # Optional, defaults to 8080
    ```
+   
+   **Note**: `DISCORD_TOKEN` is passed as a secret from Dedalus (not from `.env` file). The `DISCORD_APP_ID` and `DISCORD_PUBLIC_KEY` are read from the local `.env` file and are required for server startup.
    
    Replace the placeholder values with your actual Discord application credentials.
 
@@ -121,12 +122,16 @@ All tools return flat JSON-serializable dictionaries (no nested Pydantic models)
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DISCORD_TOKEN` | Your Discord bot token | Yes |
-| `APP_ID` | Your Discord application ID | Optional |
-| `PUBLIC_KEY` | Your Discord application public key | Optional |
-| `PORT` | Port for the MCP server (default: 8080) | No |
+| Variable | Description | Required | Source |
+|----------|-------------|----------|--------|
+| `DISCORD_TOKEN` | Your Discord bot token | Yes | Passed as secret from Dedalus via `ctx.secrets["token"]` |
+| `DISCORD_APP_ID` | Your Discord application ID | Yes | Local `.env` file |
+| `DISCORD_PUBLIC_KEY` | Your Discord application public key | Yes | Local `.env` file |
+| `PORT` | Port for the MCP server (default: 8080) | No | Local `.env` file or environment |
+
+**Important**: 
+- `DISCORD_TOKEN` is accessed via `ctx.secrets["token"]` in tools and must be passed as a secret from Dedalus when deploying to a hosted MCP server.
+- `DISCORD_APP_ID` and `DISCORD_PUBLIC_KEY` must be set in your local `.env` file and are required for server startup.
 
 ### Channel Permissions
 
@@ -247,8 +252,9 @@ discord-mcp/
 When using this MCP server on a hosted platform (e.g., dedaluslabs.ai):
 
 1. **Credentials Configuration**
-   - Ensure `DISCORD_TOKEN`, `APP_ID`, and `PUBLIC_KEY` are set in the hosted environment
-   - The credentials should be passed via the Connection/SecretValues mechanism if using Dedalus Labs
+   - Only `DISCORD_TOKEN` needs to be passed as a secret from Dedalus via the Connection/SecretValues mechanism
+   - The token is accessed in tools via `ctx.secrets["token"]`
+   - `DISCORD_APP_ID` and `DISCORD_PUBLIC_KEY` are read from the local `.env` file (baked into the deployment)
    - Verify credentials are not expired or invalid
 
 2. **Permission Errors**

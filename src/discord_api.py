@@ -9,14 +9,14 @@ import certifi
 import aiohttp
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
+from dedalus_mcp import get_context
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Discord API Configuration
 DISCORD_API_BASE_URL = "https://discord.com/api/v9"
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-DISCORD_APP_ID = os.getenv("APP_ID")
+DISCORD_APP_ID = os.getenv("DISCORD_APP_ID")
 
 
 async def discord_api_request(
@@ -37,7 +37,7 @@ async def discord_api_request(
     Args:
         method: HTTP method (GET, POST, PUT, DELETE, PATCH)
         endpoint: API endpoint (e.g., '/channels/{channel_id}/messages')
-        token: Discord bot token (defaults to DISCORD_TOKEN env var)
+        token: Discord bot token (defaults to ctx.secrets["token"])
         data: Request body data (will be JSON encoded)
         params: URL query parameters
     
@@ -48,9 +48,13 @@ async def discord_api_request(
         ValueError: If token is missing
         aiohttp.ClientResponseError: For HTTP errors
     """
-    token = token or DISCORD_TOKEN
+    # Get token from context secrets if not provided
     if not token:
-        raise ValueError("DISCORD_TOKEN environment variable is required. Set it in .env file.")
+        try:
+            ctx = get_context()
+            token = ctx.secrets["token"]
+        except (LookupError, KeyError) as e:
+            raise ValueError("Discord token not found. Ensure the token is passed as a secret from Dedalus (ctx.secrets['token']).") from e
     
     # Strip any whitespace from token (common .env mistake)
     token = token.strip()
@@ -117,7 +121,7 @@ async def discord_api_request(
                     else:
                         error_message = f"Permission denied (403): {error_message}. The bot may lack required permissions. Check server role permissions."
                 elif response.status == 401:
-                    error_message = f"Unauthorized (401): {error_message}. Check that DISCORD_TOKEN is valid, not expired, and properly configured in the hosted MCP server environment."
+                    error_message = f"Unauthorized (401): {error_message}. Check that the Discord token (ctx.secrets['token']) is valid, not expired, and properly configured in the hosted MCP server environment."
                 elif response.status == 404:
                     error_message = f"Not Found (404): {error_message}. The resource may not exist or the bot may not have access."
                 elif response.status == 429:

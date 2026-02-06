@@ -41,12 +41,17 @@ async def main() -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     
-    # Verify Discord token is set (log warning but don't crash)
-    token = os.getenv("DISCORD_TOKEN")
-    if not token:
-        logger.warning("DISCORD_TOKEN environment variable is not set. Tools will fail when called.")
-    else:
-        logger.info("DISCORD_TOKEN found")
+    # Read Discord app configuration from local .env file
+    DISCORD_APP_ID = os.getenv("DISCORD_APP_ID")
+    DISCORD_PUBLIC_KEY = os.getenv("DISCORD_PUBLIC_KEY")
+    
+    if not DISCORD_APP_ID or not DISCORD_PUBLIC_KEY:
+        raise RuntimeError("Missing Discord app configuration. DISCORD_APP_ID and DISCORD_PUBLIC_KEY must be set in .env file.")
+    
+    logger.info("Discord app configuration loaded from .env file")
+    
+    # Note: DISCORD_TOKEN is accessed via ctx.secrets["token"] in tools, not from environment variables
+    logger.info("Discord token will be accessed via ctx.secrets['token'] when tools are called")
     
     # Collect all tools
     try:
