@@ -29,14 +29,30 @@ discord_connection = Connection(
 )
 
 # Handle imports for both package and direct execution
+# Set up logging first to capture import errors
+import logging
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+logger = logging.getLogger(__name__)
+
 try:
     from .tools import discord_tools
-except ImportError:
+    logger.debug("Imported discord_tools using relative import")
+except ImportError as e:
     # Fallback for direct execution or when package structure differs
+    logger.debug(f"Relative import failed: {e}, trying absolute import")
     src_path = Path(__file__).parent
     if str(src_path) not in sys.path:
         sys.path.insert(0, str(src_path))
-    from tools import discord_tools
+    try:
+        from tools import discord_tools
+        logger.debug("Imported discord_tools using absolute import")
+    except ImportError as e2:
+        logger.error(f"Failed to import discord_tools: {e2}")
+        raise
 
 # --- Server ---
 
@@ -48,11 +64,12 @@ server = MCPServer(
 )
 
 # Collect tools at module level (required for Dedalus deployment)
+
 try:
     server.collect(*discord_tools)
+    logger.info(f"Successfully collected {len(discord_tools)} tools at module level")
 except Exception as e:
-    import logging
-    logging.error(f"Error collecting tools: {e}", exc_info=True)
+    logger.error(f"Error collecting tools: {e}", exc_info=True)
     raise
 
 
