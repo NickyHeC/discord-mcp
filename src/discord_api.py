@@ -10,6 +10,12 @@ from dedalus_mcp import get_context, HttpMethod, HttpRequest
 DISCORD_API_BASE_URL = "https://discord.com/api/v9"
 
 
+async def discord_get(path: str):
+    """Helper function for GET requests to Discord API."""
+    ctx = get_context()
+    return await ctx.dispatch("discord", HttpRequest(method=HttpMethod.GET, path=path))
+
+
 def _ctx_get_secret(ctx, key: str) -> str | None:
     """Robust secret lookup supporting multiple context shapes."""
     # 1) common: ctx.secrets is a dict
