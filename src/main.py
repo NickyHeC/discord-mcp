@@ -20,9 +20,12 @@ from dedalus_mcp.auth import Connection, SecretKeys
 load_dotenv()
 
 # Define Discord connection for token secret
+# Connection name "discord" must match ctx.dispatch("discord", ...) in discord_api.py
 discord_connection = Connection(
-    name="discord-mcp",
-    secrets=SecretKeys(token="token"),
+    name="discord",
+    secrets=SecretKeys(token="DISCORD_TOKEN"),
+    base_url="https://discord.com/api/v9",
+    auth_header_format="Bot {api_key}",
 )
 
 # Handle imports for both package and direct execution
@@ -57,9 +60,9 @@ async def main() -> None:
     
     logger.info("Initializing Discord MCP Server...")
     
-    # Note: token is accessed via ctx.secrets in tools, not from environment variables
-    logger.info("Discord token will be accessed via ctx.secrets when tools are called:")
-    logger.info("  - ctx.secrets['token']")
+    # Note: Authentication is handled automatically by Dedalus via ctx.dispatch
+    # The token is injected by the framework based on the Connection definition
+    logger.info("Discord authentication handled via Dedalus dispatch (Connection: 'discord')")
     
     # Collect all tools
     try:
