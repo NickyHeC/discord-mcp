@@ -374,7 +374,7 @@ async def list_channels(server_id: str) -> dict:
         elif "404" in error_msg or "Unknown Guild" in error_msg:
             error_detail = f"Server {server_id} not found (404). The bot may not be a member of this server. Verify the server_id is correct and the bot has been invited. Error details: {error_msg}"
         elif "401" in error_msg or "Unauthorized" in error_msg:
-            error_detail = f"Authentication failed (401) for server {server_id}. The Discord token (ctx.secrets['DISCORD_TOKEN']) may be invalid, expired, or not properly configured in the hosted MCP server environment. Error details: {error_msg}"
+            error_detail = f"Authentication failed (401) for server {server_id}. The Discord token (ctx.secrets['token']) may be invalid, expired, or not properly configured in the hosted MCP server environment. Error details: {error_msg}"
         else:
             error_detail = f"Failed to list channels for server {server_id}. Error: {error_msg}"
         

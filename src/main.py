@@ -23,7 +23,7 @@ load_dotenv()
 discord_connection = Connection(
     name="discord-mcp",
     secrets=SecretKeys(
-        token="DISCORD_TOKEN",
+        token="token",
     ),
 )
 
@@ -59,9 +59,9 @@ async def main() -> None:
     
     logger.info("Initializing Discord MCP Server...")
     
-    # Note: DISCORD_TOKEN is accessed via ctx.secrets in tools, not from environment variables
+    # Note: token is accessed via ctx.secrets in tools, not from environment variables
     logger.info("Discord token will be accessed via ctx.secrets when tools are called:")
-    logger.info("  - ctx.secrets['DISCORD_TOKEN']")
+    logger.info("  - ctx.secrets['token']")
     
     # Collect all tools
     try:

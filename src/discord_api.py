@@ -16,7 +16,7 @@ load_dotenv()
 
 # Discord API Configuration
 DISCORD_API_BASE_URL = "https://discord.com/api/v9"
-# DISCORD_TOKEN is accessed via ctx.secrets
+# token is accessed via ctx.secrets
 
 
 async def discord_api_request(
@@ -121,7 +121,7 @@ async def discord_api_request(
                     else:
                         error_message = f"Permission denied (403): {error_message}. The bot may lack required permissions. Check server role permissions."
                 elif response.status == 401:
-                    error_message = f"Unauthorized (401): {error_message}. Check that the Discord token (ctx.secrets['DISCORD_TOKEN']) is valid, not expired, and properly configured in the hosted MCP server environment."
+                    error_message = f"Unauthorized (401): {error_message}. Check that the Discord token (ctx.secrets['token']) is valid, not expired, and properly configured in the hosted MCP server environment."
                 elif response.status == 404:
                     error_message = f"Not Found (404): {error_message}. The resource may not exist or the bot may not have access."
                 elif response.status == 429:
