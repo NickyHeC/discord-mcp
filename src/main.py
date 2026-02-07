@@ -15,6 +15,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from dedalus_mcp import MCPServer
 from dedalus_mcp.auth import Connection, SecretKeys
+from dedalus_mcp.server import TransportSecuritySettings
 
 # Load environment variables from .env file
 load_dotenv()
@@ -40,10 +41,18 @@ except ImportError:
 
 # --- Server ---
 
-server = MCPServer(
-    name="discord-mcp",
-    connections=[discord_connection],
-)
+def create_server() -> MCPServer:
+    """Create MCP server with current env config."""
+    as_url = os.getenv("DEDALUS_AS_URL", "https://as.dedaluslabs.ai")
+    return MCPServer(
+        name="discord-mcp",
+        connections=[discord_connection],
+        http_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+        streamable_http_stateless=True,
+        authorization_server=as_url,
+    )
+
+server = create_server()
 
 
 async def main() -> None:

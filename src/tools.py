@@ -3,7 +3,7 @@ import asyncio
 import sys
 from pathlib import Path
 from typing import List, Optional
-from dedalus_mcp import tool, get_context
+from dedalus_mcp import tool, get_context, HttpMethod, HttpRequest
 from pydantic import BaseModel
 
 # Discord message length limit
@@ -54,7 +54,6 @@ try:
         get_user_v9,
         get_guild_members_v9,
         discord_api_request,
-        _ctx_get_secret,
     )
 except ImportError:
     # Fallback for direct execution or when package structure differs
@@ -541,48 +540,16 @@ async def list_members(server_id: str, limit: int = 100) -> dict:
         }
 
 
-@tool(description="Debug: show which secret keys are present (no values).")
-async def debug_secrets() -> dict:
+@tool(description="Smoke test Discord auth by calling /users/@me")
+async def discord_smoke() -> dict:
     ctx = get_context()
-    # Use robust secret lookup to find all possible secret containers
-    
-    # Try common secret key names
-    found_keys = []
-    for key in ["token", "DISCORD_TOKEN"]:
-        if _ctx_get_secret(ctx, key):
-            found_keys.append(key)
-    
-    # Also check if ctx has secrets/secrets_values attributes
-    all_keys = set()
-    if hasattr(ctx, "secrets") and isinstance(getattr(ctx, "secrets"), dict):
-        all_keys.update(getattr(ctx, "secrets").keys())
-    if hasattr(ctx, "secret_values") and isinstance(getattr(ctx, "secret_values"), dict):
-        all_keys.update(getattr(ctx, "secret_values").keys())
-    if isinstance(ctx, dict):
-        if "secrets" in ctx and isinstance(ctx["secrets"], dict):
-            all_keys.update(ctx["secrets"].keys())
-        if "secret_values" in ctx and isinstance(ctx["secret_values"], dict):
-            all_keys.update(ctx["secret_values"].keys())
-    
-    return {"secret_keys": sorted(list(all_keys)) if all_keys else found_keys}
-
-
-@tool(description="Debug: show what keys exist in the Dedalus tool context (no secrets exposed).")
-async def debug_ctx_shape() -> dict:
-    ctx = get_context()
+    resp = await ctx.dispatch("discord", HttpRequest(method=HttpMethod.GET, path="/users/@me"))
     return {
-        "ctx_type": str(type(ctx)),
-        "has_secrets_attr": hasattr(ctx, "secrets"),
-        "has_secret_values_attr": hasattr(ctx, "secret_values"),
-        "ctx_dir_sample": [k for k in dir(ctx) if "secret" in k.lower()][:20],
-        "is_dict": isinstance(ctx, dict),
-        "dict_keys": list(ctx.keys())[:50] if isinstance(ctx, dict) else [],
+        "success": resp.success,
+        "status": getattr(resp.response, "status_code", None),
+        "error": resp.error.message if resp.error else None,
+        "body": resp.response.body if resp.response else None,
     }
-
-
-@tool(description="Debug: check bot auth by calling /users/@me.")
-async def whoami() -> dict:
-    return await discord_api_request("GET", "/users/@me")
 
 
 discord_tools = [
@@ -595,7 +562,5 @@ discord_tools = [
     delete_message,
     get_user_info,
     list_members,
-    debug_secrets,
-    debug_ctx_shape,
-    whoami,
+    discord_smoke,
 ]
