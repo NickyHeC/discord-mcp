@@ -3,7 +3,7 @@ import asyncio
 import sys
 from pathlib import Path
 from typing import List, Optional
-from dedalus_mcp import tool
+from dedalus_mcp import tool, get_context
 from pydantic import BaseModel
 
 # Discord message length limit
@@ -53,6 +53,7 @@ try:
         create_reaction_v9,
         get_user_v9,
         get_guild_members_v9,
+        discord_api_request,
     )
 except ImportError:
     # Fallback for direct execution or when package structure differs
@@ -61,6 +62,7 @@ except ImportError:
         sys.path.insert(0, str(src_path))
     from discord_api import (
         send_message_v9,
+        discord_api_request,
         get_channel_messages_v9,
         get_guild_v9,
         get_guild_channels_v9,
@@ -537,6 +539,17 @@ async def list_members(server_id: str, limit: int = 100) -> dict:
         }
 
 
+@tool(description="Debug: show which secret keys are present (no values).")
+async def debug_secrets() -> dict:
+    ctx = get_context()
+    return {"secret_keys": sorted(list(ctx.secrets.keys()))}
+
+
+@tool(description="Debug: check bot auth by calling /users/@me.")
+async def whoami() -> dict:
+    return await discord_api_request("GET", "/users/@me")
+
+
 discord_tools = [
     send_message,
     read_messages,
@@ -547,4 +560,6 @@ discord_tools = [
     delete_message,
     get_user_info,
     list_members,
+    debug_secrets,
+    whoami,
 ]
