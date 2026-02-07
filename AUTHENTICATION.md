@@ -36,8 +36,8 @@ PORT=8080  # Optional
 **Loading mechanism:**
 - Uses `python-dotenv` to load `.env` file (mainly for `PORT` configuration)
 - `load_dotenv()` is called in both `discord_api.py` and `main.py`
-- `DISCORD_TOKEN` is passed as a secret from Dedalus and accessed via `ctx.secrets` in tools:
-  - `ctx.secrets["DISCORD_TOKEN"]`
+- The Discord bot token is passed as a secret from Dedalus and accessed via `ctx.secrets` in tools:
+  - `ctx.secrets["token"]`
 - The token is retrieved using `get_context()` from `dedalus_mcp` and accessed via the secrets dictionary
 
 ### Verification Checklist
