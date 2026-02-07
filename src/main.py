@@ -25,7 +25,7 @@ discord_connection = Connection(
     name="discord",
     secrets=SecretKeys(token="DISCORD_TOKEN"),
     base_url="https://discord.com/api/v9",
-    auth_header_format="Bot {token}",
+    auth_header_format="Bot {api_key}",
 )
 
 # Handle imports for both package and direct execution
