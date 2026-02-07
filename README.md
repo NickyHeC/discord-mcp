@@ -1,6 +1,6 @@
 # Discord MCP Server
 
-A Model Context Protocol (MCP) server that enables AI agents to interact with Discord using the Discord REST API v9. This server provides tools for sending messages, reading channel history, managing servers, and more.
+A Model Context Protocol (MCP) server that enables AI agents to interact with Discord using the Discord REST API v9. Built with the Dedalus MCP framework, this server provides tools for sending messages, reading channel history, managing servers, and more. All API calls use Dedalus MCP's `ctx.dispatch` mechanism for automatic authentication handling.
 
 ## Prerequisites
 
@@ -78,10 +78,7 @@ Before using this MCP server, you need to create a Discord application and confi
    PORT=8080  # Optional, defaults to 8080
    ```
    
-   **Note**: `DISCORD_TOKEN` is passed as a secret from Dedalus via the Connection/SecretValues mechanism. It is accessed in tools via:
-   - `ctx.secrets["DISCORD_TOKEN"]`
-   
-   For local development, you may still use environment variables, but in production/hosted environments, the token should be passed as a secret.
+   **Note**: `DISCORD_TOKEN` is passed as a secret from Dedalus via the Connection mechanism. The server uses Dedalus MCP's `ctx.dispatch` for all API calls, which automatically handles authentication via the Connection definition. For local development, you may still use environment variables, but in production/hosted environments, the token should be passed as a secret.
 
 ## Running the Server
 
@@ -112,6 +109,7 @@ The Discord MCP server provides the following tools:
 - **`delete_message`** - Delete a message from a channel
 - **`get_user_info`** - Get information about a Discord user. Returns a dict with user details including `id`, `username`, `discriminator`, `global_name`, `bot`, and `avatar_url`.
 - **`list_members`** - List members in a server (requires `guilds.members.read` scope). Returns a dict with `count`, `members` (list of member dicts), and optional `error` field.
+- **`discord_smoke`** - Smoke test tool to verify Discord authentication by calling `/users/@me`. Returns `success`, `error`, and `body` fields.
 
 ### Response Format
 
@@ -123,12 +121,15 @@ All tools return flat JSON-serializable dictionaries (no nested Pydantic models)
 
 | Variable | Description | Required | Source |
 |----------|-------------|----------|--------|
-| `DISCORD_TOKEN` | Your Discord bot token | Yes | Passed as secret from Dedalus via `ctx.secrets["DISCORD_TOKEN"]` |
+| `DISCORD_TOKEN` | Your Discord bot token | Yes | Passed as secret from Dedalus via Connection mechanism |
 | `PORT` | Port for the MCP server (default: 8080) | No | Local `.env` file or environment |
+| `DEDALUS_AS_URL` | Authorization server URL (default: https://as.dedaluslabs.ai) | No | Environment variable |
 
 **Important**: 
-- `DISCORD_TOKEN` is accessed via `ctx.secrets["DISCORD_TOKEN"]` in tools and must be passed as a secret from Dedalus when deploying to a hosted MCP server.
+- `DISCORD_TOKEN` must be passed as a secret from Dedalus when deploying to a hosted MCP server.
 - The Connection definition expects the secret with the exact name: `DISCORD_TOKEN`.
+- Authentication is handled automatically via Dedalus MCP's `ctx.dispatch` mechanism - the token is injected by the framework based on the Connection definition.
+- The Connection name is `"discord"` and uses `auth_header_format="Bot {api_key}"` for Discord API authentication.
 
 ### Channel Permissions
 
@@ -160,6 +161,16 @@ All tools return flat, JSON-serializable dictionaries to ensure compatibility wi
 - Optional fields are omitted rather than set to null
 - Error information is included in an optional `error` field
 
+### Dedalus MCP Integration
+
+This server uses the Dedalus MCP framework and follows the recommended patterns:
+
+- **Connection-based authentication**: Uses `Connection` definition with `name="discord"` and `auth_header_format="Bot {api_key}"`
+- **Dispatch-based API calls**: All Discord API calls use `ctx.dispatch("discord", HttpRequest(...))` instead of direct HTTP libraries
+- **Automatic token injection**: The framework automatically injects the token from the Connection definition
+- **Server configuration**: Includes `authorization_server` and `streamable_http_stateless=True` for Dedalus deployment
+- **Module-level tool collection**: Tools are collected at module level to ensure server readiness during deployment validation
+
 ### Enhanced Error Handling
 
 - Detailed error messages with specific Discord error codes
@@ -190,14 +201,21 @@ asyncio.run(list_channels("server_id"))
 ```
 discord-mcp/
 ├── src/
-│   ├── main.py          # MCP server entry point
-│   ├── tools.py         # Discord tool definitions
-│   └── discord_api.py   # Discord API v9 client
-├── .env                 # Environment variables (create this)
+│   ├── main.py          # MCP server entry point, Connection definition, tool collection
+│   ├── tools.py         # Discord tool definitions using @tool decorator
+│   └── discord_api.py   # Discord API v9 client using ctx.dispatch
+├── .env                 # Environment variables (create this, optional for local dev)
 ├── requirements.txt     # Python dependencies
 ├── pyproject.toml       # Project configuration
+├── AUTHENTICATION.md     # Authentication setup guide
 └── README.md           # This file
 ```
+
+### Key Files
+
+- **`src/main.py`**: Defines the `MCPServer`, `Connection` (name="discord"), and collects all tools at module level
+- **`src/tools.py`**: Contains all Discord interaction tools decorated with `@tool`
+- **`src/discord_api.py`**: Low-level Discord API functions using `ctx.dispatch("discord", ...)` for authenticated requests
 
 ## Troubleshooting
 
@@ -232,8 +250,8 @@ discord-mcp/
    - Agents should check the `error` field in responses and handle errors gracefully
 
 5. **SSL Certificate Errors**
-   - The code uses `certifi` for SSL certificate verification
-   - If you encounter SSL errors, ensure `certifi` is installed: `pip3 install certifi`
+   - The server uses Dedalus MCP's dispatch mechanism which handles SSL automatically
+   - No additional SSL configuration is needed
 
 6. **Intents Not Working**
    - Make sure you've enabled the required Privileged Gateway Intents in the Discord Developer Portal
@@ -249,10 +267,11 @@ discord-mcp/
 When using this MCP server on a hosted platform (e.g., dedaluslabs.ai):
 
 1. **Credentials Configuration**
-   - `DISCORD_TOKEN` must be passed as a secret from Dedalus via the Connection/SecretValues mechanism
-   - The token is accessed in tools via:
-     - `ctx.secrets["DISCORD_TOKEN"]`
+   - `DISCORD_TOKEN` must be passed as a secret from Dedalus via the Connection mechanism
+   - The Connection definition in `main.py` expects the secret with name `"DISCORD_TOKEN"`
+   - Authentication is handled automatically via `ctx.dispatch` - no manual token access needed
    - Verify the token is not expired or invalid
+   - Use the `discord_smoke` tool to test authentication
 
 2. **Permission Errors**
    - Hosted servers use the same bot token, so permissions must be granted when the bot is invited
