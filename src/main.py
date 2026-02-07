@@ -47,6 +47,14 @@ server = MCPServer(
     streamable_http_stateless=True,
 )
 
+# Collect tools at module level (required for Dedalus deployment)
+try:
+    server.collect(*discord_tools)
+except Exception as e:
+    import logging
+    logging.error(f"Error collecting tools: {e}", exc_info=True)
+    raise
+
 
 async def main() -> None:
     """Main entry point for the MCP server."""
@@ -65,14 +73,7 @@ async def main() -> None:
     # Note: Authentication is handled automatically by Dedalus via ctx.dispatch
     # The token is injected by the framework based on the Connection definition
     logger.info("Discord authentication handled via Dedalus dispatch (Connection: 'discord')")
-    
-    # Collect all tools
-    try:
-        server.collect(*discord_tools)
-        logger.info(f"Collected {len(discord_tools)} tools")
-    except Exception as e:
-        logger.error(f"Error collecting tools: {e}", exc_info=True)
-        raise
+    logger.info(f"Collected {len(discord_tools)} tools")
     
     # Get port from environment or use default
     port = int(os.getenv("PORT", "8080"))
