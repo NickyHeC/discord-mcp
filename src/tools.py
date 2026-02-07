@@ -3,7 +3,7 @@ import asyncio
 import sys
 from pathlib import Path
 from typing import List, Optional
-from dedalus_mcp import tool, get_context
+from dedalus_mcp import tool, get_context, HttpMethod, HttpRequest
 from pydantic import BaseModel
 
 # Discord message length limit
@@ -54,7 +54,6 @@ try:
         get_user_v9,
         get_guild_members_v9,
         discord_api_request,
-        discord_get,
     )
 except ImportError:
     # Fallback for direct execution or when package structure differs
@@ -541,13 +540,21 @@ async def list_members(server_id: str, limit: int = 100) -> dict:
         }
 
 
-@tool(description="Smoke test Discord auth")
+@tool(description="Smoke test Discord auth by calling GET /users/@me")
 async def discord_smoke() -> dict:
-    resp = await discord_get("/users/@me")
+    ctx = get_context()
+
+    # IMPORTANT: this string must match Connection(name="...") in your server
+    resp = await ctx.dispatch(
+        "discord",
+        HttpRequest(method=HttpMethod.GET, path="/users/@me"),
+    )
+
     return {
         "success": resp.success,
-        "error": resp.error.message if resp.error else None,
-        "body": resp.response.body if resp.response else None,
+        "status": getattr(resp, "status", None),
+        "error": (resp.error.message if resp.error else None),
+        "body": (resp.response.body if resp.response else None),
     }
 
 
