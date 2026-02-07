@@ -78,12 +78,10 @@ Before using this MCP server, you need to create a Discord application and confi
    PORT=8080  # Optional, defaults to 8080
    ```
    
-   **Note**: All Discord credentials (`DISCORD_TOKEN`, `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY`) are passed as secrets from Dedalus via the Connection/SecretValues mechanism. They are accessed in tools via:
+   **Note**: `DISCORD_TOKEN` is passed as a secret from Dedalus via the Connection/SecretValues mechanism. It is accessed in tools via:
    - `ctx.secrets["DISCORD_TOKEN"]`
-   - `ctx.secrets["DISCORD_APP_ID"]`
-   - `ctx.secrets["DISCORD_PUBLIC_KEY"]`
    
-   For local development, you may still use environment variables, but in production/hosted environments, all credentials should be passed as secrets.
+   For local development, you may still use environment variables, but in production/hosted environments, the token should be passed as a secret.
 
 ## Running the Server
 
@@ -126,13 +124,11 @@ All tools return flat JSON-serializable dictionaries (no nested Pydantic models)
 | Variable | Description | Required | Source |
 |----------|-------------|----------|--------|
 | `DISCORD_TOKEN` | Your Discord bot token | Yes | Passed as secret from Dedalus via `ctx.secrets["DISCORD_TOKEN"]` |
-| `DISCORD_APP_ID` | Your Discord application ID | Yes | Passed as secret from Dedalus via `ctx.secrets["DISCORD_APP_ID"]` |
-| `DISCORD_PUBLIC_KEY` | Your Discord application public key | Yes | Passed as secret from Dedalus via `ctx.secrets["DISCORD_PUBLIC_KEY"]` |
 | `PORT` | Port for the MCP server (default: 8080) | No | Local `.env` file or environment |
 
 **Important**: 
-- All Discord credentials (`DISCORD_TOKEN`, `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY`) are accessed via `ctx.secrets` in tools and must be passed as secrets from Dedalus when deploying to a hosted MCP server.
-- The Connection definition expects these secrets with the exact names: `DISCORD_TOKEN`, `DISCORD_APP_ID`, and `DISCORD_PUBLIC_KEY`.
+- `DISCORD_TOKEN` is accessed via `ctx.secrets["DISCORD_TOKEN"]` in tools and must be passed as a secret from Dedalus when deploying to a hosted MCP server.
+- The Connection definition expects the secret with the exact name: `DISCORD_TOKEN`.
 
 ### Channel Permissions
 
@@ -253,12 +249,10 @@ discord-mcp/
 When using this MCP server on a hosted platform (e.g., dedaluslabs.ai):
 
 1. **Credentials Configuration**
-   - All Discord credentials (`DISCORD_TOKEN`, `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY`) must be passed as secrets from Dedalus via the Connection/SecretValues mechanism
-   - Credentials are accessed in tools via:
+   - `DISCORD_TOKEN` must be passed as a secret from Dedalus via the Connection/SecretValues mechanism
+   - The token is accessed in tools via:
      - `ctx.secrets["DISCORD_TOKEN"]`
-     - `ctx.secrets["DISCORD_APP_ID"]`
-     - `ctx.secrets["DISCORD_PUBLIC_KEY"]`
-   - Verify credentials are not expired or invalid
+   - Verify the token is not expired or invalid
 
 2. **Permission Errors**
    - Hosted servers use the same bot token, so permissions must be granted when the bot is invited
