@@ -22,9 +22,7 @@ load_dotenv()
 # Define Discord connection for token secret
 discord_connection = Connection(
     name="discord-mcp",
-    secrets=SecretKeys(
-        token="token",
-    ),
+    secrets=SecretKeys(token="token"),
 )
 
 # Handle imports for both package and direct execution
