@@ -94,27 +94,31 @@ async def main() -> None:
     
     # Get port from environment or use default
     port = int(os.getenv("PORT", "8080"))
-    
-    # Serve the MCP server
-    logger.info(f"Starting Discord MCP Server on port {port}")
-    await server.serve(port=port)
+    # Bind to 0.0.0.0 so deployment/validation can reach /mcp from outside the container
+    host = os.getenv("HOST", "0.0.0.0")
+
+    # Serve the MCP server (HTTP/SSE at /mcp)
+    logger.info(f"Starting Discord MCP Server on {host}:{port}")
+    await server.serve(host=host, port=port)
 
 
-if __name__ == "__main__":
+def run() -> None:
+    """Sync entry point for console script (e.g. discord-mcp). Runs the async server."""
     import logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-    logger = logging.getLogger(__name__)
-    
+    _logger = logging.getLogger(__name__)
     try:
-        logger.info("Starting Discord MCP Server...")
+        _logger.info("Starting Discord MCP Server...")
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Server stopped by user")
+        _logger.info("Server stopped by user")
     except Exception as e:
-        logger.error(f"Failed to start server: {e}", exc_info=True)
-        # Don't raise - let the process exit naturally so we can see the error
-        import sys
+        _logger.error(f"Failed to start server: {e}", exc_info=True)
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    run()

@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-discord-mcp = "src.main:main"
+discord-mcp = "src.main:run"
 
 [tool.hatchling.build]
 packages = ["src"]
