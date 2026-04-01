@@ -61,40 +61,33 @@ Before using this MCP server, you need to create a Discord application and confi
    cd discord-mcp
    ```
 
-2. **Install dependencies:**
+2. **Install dependencies** (editable install, same pattern as [mcp-template](https://github.com/NickyHeC/mcp-template) API Key projects):
+
    ```bash
-   pip3 install -r requirements.txt
-   ```
-   
-   Or using `uv`:
-   ```bash
-   uv pip install -r requirements.txt
+   pip install -e .
    ```
 
-3. **Set up environment variables:**
-   
-   Create a `.env` file in the project root (optional, for local development):
+   Or: `uv pip install -e .`
+
+3. **Environment variables**
+
    ```bash
-   PORT=8080  # Optional, defaults to 8080
+   cp .env.example .env
    ```
-   
-   **Note**: `DISCORD_TOKEN` is passed as a secret from Dedalus via the Connection mechanism. The server uses Dedalus MCP's `ctx.dispatch` for all API calls, which automatically handles authentication via the Connection definition. For local development, you may still use environment variables, but in production/hosted environments, the token should be passed as a secret.
+
+   Set `DISCORD_TOKEN` for local runs and tests. On Dedalus, the secret name must match `SecretKeys(token="DISCORD_TOKEN")` in `src/main.py`. See `.env.example` for optional Dedalus URLs and `PORT` / `HOST`.
 
 ## Running the Server
 
 Start the MCP server:
 
 ```bash
-python3 -m src.main
+python -m src.main
 ```
 
-Or:
+Or the console script: `discord-mcp`
 
-```bash
-python3 src/main.py
-```
-
-The server will start on port 8080 (or the port specified in the `PORT` environment variable).
+The server listens on `PORT` (default **8080**) and `HOST` (default **0.0.0.0**).
 
 ## Available Tools
 
@@ -168,7 +161,7 @@ This server uses the Dedalus MCP framework and follows the recommended patterns:
 - **Connection-based authentication**: Uses `Connection` definition with `name="discord"` and `auth_header_format="Bot {api_key}"`
 - **Dispatch-based API calls**: All Discord API calls use `ctx.dispatch("discord", HttpRequest(...))` instead of direct HTTP libraries
 - **Automatic token injection**: The framework automatically injects the token from the Connection definition
-- **Server configuration**: Includes `authorization_server` and `streamable_http_stateless=True` for Dedalus deployment
+- **Server configuration**: `authorization_server`, `streamable_http_stateless=True`, and `http_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)` (aligned with the Dedalus MCP API Key template)
 - **Module-level tool collection**: Tools are collected at module level to ensure server readiness during deployment validation
 
 ### Enhanced Error Handling
@@ -180,7 +173,24 @@ This server uses the Dedalus MCP framework and follows the recommended patterns:
 
 ## Testing
 
-You can test the tools directly using Python:
+**1. Connection + token (no server)** — same pattern as the mcp-template API Key `client.py`:
+
+```bash
+python -m src.client --test-connection
+```
+
+Requires `DISCORD_TOKEN` in the environment (e.g. from `.env`). Calls Discord `GET /users/@me` via `ConnectionTester`.
+
+**2. Running server + MCP client**
+
+```bash
+python -m src.main   # terminal 1
+python -m src.client # terminal 2 (default URL `http://127.0.0.1:8080/mcp`)
+```
+
+**3. Optional: smoke script** — `python scripts/test_deploy.py` starts the server, probes `/mcp`, and runs the client.
+
+You can also call tool functions from Python (for ad-hoc debugging):
 
 ```python
 import asyncio
@@ -201,14 +211,17 @@ asyncio.run(list_channels("server_id"))
 ```
 discord-mcp/
 ├── src/
-│   ├── main.py          # MCP server entry point, Connection definition, tool collection
-│   ├── tools.py         # Discord tool definitions using @tool decorator
-│   └── discord_api.py   # Discord API v9 client using ctx.dispatch
-├── .env                 # Environment variables (create this, optional for local dev)
-├── requirements.txt     # Python dependencies
-├── pyproject.toml       # Project configuration
-├── AUTHENTICATION.md     # Authentication setup guide
-└── README.md           # This file
+│   ├── main.py          # MCPServer, Connection (API key / bot token), tool collection
+│   ├── tools.py         # @tool definitions
+│   ├── discord_api.py   # Discord REST v9 via ctx.dispatch("discord", ...)
+│   └── client.py        # --test-connection and MCPClient smoke tests
+├── scripts/
+│   └── test_deploy.py   # Optional local deploy smoke (server + /mcp + client)
+├── .env.example         # Copy to .env for local dev
+├── pyproject.toml       # Dependencies and hatchling package layout
+├── API_V9.md
+├── AUTHENTICATION.md
+└── README.md
 ```
 
 ### Key Files

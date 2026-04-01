@@ -6,42 +6,6 @@ Provides direct HTTP access to Discord API version 9 using Dedalus dispatch.
 from typing import Optional, Dict, Any
 from dedalus_mcp import get_context, HttpMethod, HttpRequest
 
-# Discord API Configuration
-DISCORD_API_BASE_URL = "https://discord.com/api/v9"
-
-
-async def discord_get(path: str):
-    """Helper function for GET requests to Discord API."""
-    ctx = get_context()
-    return await ctx.dispatch("discord", HttpRequest(method=HttpMethod.GET, path=path))
-
-
-def _ctx_get_secret(ctx, key: str) -> str | None:
-    """Robust secret lookup supporting multiple context shapes."""
-    # 1) common: ctx.secrets is a dict
-    if hasattr(ctx, "secrets"):
-        secrets = getattr(ctx, "secrets")
-        if isinstance(secrets, dict) and key in secrets:
-            return secrets[key]
-
-    # 2) common: ctx.secret_values is a dict (some runtimes)
-    if hasattr(ctx, "secret_values"):
-        sv = getattr(ctx, "secret_values")
-        if isinstance(sv, dict) and key in sv:
-            return sv[key]
-
-    # 3) sometimes ctx itself is dict-like
-    if isinstance(ctx, dict):
-        for container_key in ("secrets", "secret_values"):
-            c = ctx.get(container_key)
-            if isinstance(c, dict) and key in c:
-                return c[key]
-        # or secrets directly at top-level
-        if key in ctx:
-            return ctx[key]
-
-    return None
-
 
 async def discord_api_request(
     method: str,

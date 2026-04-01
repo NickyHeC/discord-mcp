@@ -11,11 +11,12 @@ requires-python = ">=3.10"
 dependencies = [
     "dedalus-mcp>=0.7.0",
     "python-dotenv>=1.0.0",
-    "pydantic>=2.0.0",
+    "pydantic>=2.12.0",
 ]
 
 [project.scripts]
 discord-mcp = "src.main:run"
 
-[tool.hatchling.build]
+# Project name is discord-mcp; package dir is `src/` (imports: from src.tools …)
+[tool.hatch.build.targets.wheel]
 packages = ["src"]

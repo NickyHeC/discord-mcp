@@ -1,7 +1,5 @@
 # tools.py - Discord tools using Discord API v9
 import asyncio
-import sys
-from pathlib import Path
 from typing import List, Optional
 from dedalus_mcp import tool, get_context, HttpMethod, HttpRequest
 from pydantic import BaseModel
@@ -41,38 +39,18 @@ def chunk_discord_message(text: str, limit: int = DISCORD_MAX) -> List[str]:
         chunks.append(cur)
     return chunks
 
-# Handle imports for both package and direct execution
-try:
-    from .discord_api import (
-        send_message_v9,
-        get_channel_messages_v9,
-        get_guild_v9,
-        get_guild_channels_v9,
-        get_current_user_guilds_v9,
-        delete_message_v9,
-        create_reaction_v9,
-        get_user_v9,
-        get_guild_members_v9,
-        discord_api_request,
-    )
-except ImportError:
-    # Fallback for direct execution or when package structure differs
-    src_path = Path(__file__).parent
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-    from discord_api import (
-        send_message_v9,
-        discord_api_request,
-        get_channel_messages_v9,
-        get_guild_v9,
-        get_guild_channels_v9,
-        get_current_user_guilds_v9,
-        delete_message_v9,
-        create_reaction_v9,
-        get_user_v9,
-        get_guild_members_v9,
-        _ctx_get_secret,
-    )
+from .discord_api import (
+    send_message_v9,
+    get_channel_messages_v9,
+    get_guild_v9,
+    get_guild_channels_v9,
+    get_current_user_guilds_v9,
+    delete_message_v9,
+    create_reaction_v9,
+    get_user_v9,
+    get_guild_members_v9,
+    discord_api_request,
+)
 
 
 class MessageResponse(BaseModel):

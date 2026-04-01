@@ -6,46 +6,36 @@ This Discord MCP server uses **Bot Token** authentication as specified in the Di
 
 ### Authentication Header Format
 
-According to Discord API documentation:
-- **Bot Token**: `Authorization: Bot {token}`
-- **OAuth2 Bearer Token**: `Authorization: Bearer {token}`
+According to Discord API documentation, bot requests use:
 
-This server uses the **Bot Token** format, which is correct for bot applications.
+- **Bot token**: `Authorization: Bot <your-bot-token>`
+- **OAuth2 user token**: `Authorization: Bearer <token>`
+
+This server uses the **bot token** style. In `dedalus_mcp`, the `Connection` header template must include the literal placeholder **`{api_key}`** (the framework substitutes your secret with `.format(api_key=...)`). Use:
+
+```text
+auth_header_format="Bot {api_key}"
+```
+
+in `src/main.py` — the value is still your Discord bot token; only the template placeholder name is fixed by the SDK.
 
 ### Implementation
 
-**Location**: `src/discord_api.py`
-
-```python
-headers = {
-    "Authorization": f"Bot {token}",
-    "Content-Type": "application/json",
-    "User-Agent": "DiscordBot (discord-mcp, 0.1.0)",
-}
-```
-
-✅ **Correct Format**: `Authorization: Bot {token}`
+**Location**: `src/main.py` (`Connection`) and `src/discord_api.py` (`ctx.dispatch` to Discord REST v9).
 
 ### Environment Variables
 
-**Local `.env` file structure (optional, for local development):**
-```
-PORT=8080  # Optional
-```
+**Local `.env`:** copy `.env.example` to `.env`. At minimum set `DISCORD_TOKEN` for local runs and `python -m src.client --test-connection`.
 
 **Loading mechanism:**
-- Uses `python-dotenv` to load `.env` file (mainly for `PORT` configuration)
-- `load_dotenv()` is called in both `discord_api.py` and `main.py`
-- The Discord bot token is passed as a secret from Dedalus and accessed via `ctx.secrets` in tools:
-  - `ctx.secrets["token"]`
-- The token is retrieved using `get_context()` from `dedalus_mcp` and accessed via the secrets dictionary
+- `python-dotenv` loads `.env` in `src/main.py` and `src/client.py`
+- Hosted: DAuth supplies the bot token; tools use `ctx.dispatch("discord", ...)` — no raw token in server code
 
 ### Verification Checklist
 
-✅ **Authorization header format**: Correct (`Bot {token}`)  
-✅ **Environment variable loading**: `.env` file is loaded using `python-dotenv`  
-✅ **Token validation**: Code checks if token exists before making requests  
-✅ **Error handling**: Raises `ValueError` if token is missing  
+✅ **Connection**: `auth_header_format="Bot {api_key}"` with `SecretKeys(token="DISCORD_TOKEN")`  
+✅ **Local token**: `DISCORD_TOKEN` in `.env` for `ConnectionTester` and local dispatch  
+✅ **Error handling**: Failed requests surface errors in tool responses or logs as documented in the README  
 
 ### Security Notes
 
