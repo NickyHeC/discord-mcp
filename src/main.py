@@ -20,10 +20,10 @@ from src.tools import discord_tools
 
 load_dotenv()
 
-# Connection name "discord" must match ctx.dispatch("discord", ...) in discord_api.py
+# Connection name "discord-mcp" must match ctx.dispatch("discord-mcp", ...) in discord_api.py
 # auth_header_format must contain "{api_key}" (dedalus_mcp); value is still the bot token.
 discord_connection = Connection(
-    name="discord",
+    name="discord-mcp",
     secrets=SecretKeys(token="DISCORD_TOKEN"),
     base_url="https://discord.com/api/v9",
     auth_header_format="Bot {api_key}",

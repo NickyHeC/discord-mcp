@@ -524,7 +524,7 @@ async def discord_smoke() -> dict:
 
     # IMPORTANT: this string must match Connection(name="...") in your server
     resp = await ctx.dispatch(
-        "discord",
+        "discord-mcp",
         HttpRequest(method=HttpMethod.GET, path="/users/@me"),
     )
 

@@ -37,7 +37,7 @@ async def discord_api_request(
         path = f"{endpoint}?{urlencode(params)}"
 
     resp = await ctx.dispatch(
-        "discord",  # MUST match Connection(name="discord", ...)
+        "discord-mcp",  # MUST match Connection(name="discord-mcp", ...)
         HttpRequest(
             method=HttpMethod(method),
             path=path,
